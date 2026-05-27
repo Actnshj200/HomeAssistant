@@ -75,3 +75,11 @@ tmp/
 temp/
 .history/
 *.bak
+
+# Generated audio/media artifacts
+Functions/output.wav
+output.wav
+temp_audio_*.wav
+
+# Electron build artifacts
+app-builds/

@@ -1,7 +1,12 @@
 // database.js
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const { MongoClient } = require('mongodb');
+const path = require('path');
 
-const uri = 'mongodb+srv://hjmosley1:Mario200@mlcluster.teatmbg.mongodb.net/?retryWrites=true&w=majority&appName=MLCluster';
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+    throw new Error('MONGODB_URI environment variable is not set. Copy .env.example to .env and fill in your credentials.');
+}
 
 const client = new MongoClient(uri);
 

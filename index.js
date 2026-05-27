@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { app, BrowserWindow, ipcMain } = require('electron');
 const axios = require('axios');
 
@@ -8,8 +9,13 @@ function createWindow() {
     width: 800,
     height: 600,
     webPreferences: {
+      // NOTE: nodeIntegration + contextIsolation:false are required while renderer
+      // scripts use require() directly. Future refactor should use a preload script
+      // with contextBridge to expose only the needed APIs, then flip these flags.
       nodeIntegration: true,
       contextIsolation: false,
+      webSecurity: true,
+      preload: require('path').join(__dirname, 'preload.js'),
     },
   });
 

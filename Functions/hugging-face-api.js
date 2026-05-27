@@ -1,3 +1,4 @@
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
@@ -5,16 +6,18 @@ const mammoth = require('mammoth');
 const pdf2json = require('pdf2json');
 const Speaker = require('speaker');
 const { spawn } = require('child_process');
-//const { ElevenLabsClient } = require("elevenlabs");
-const stream = require('stream'); // Add this line to import the 'stream' module
+const stream = require('stream');
 const { HandleAudio } = require('./audio.js');
 const record = require('node-record-lpcm16');
-const shellyIP = '192.168.0.d44'; // Replace with your Shelly device's IP
+const shellyIP = process.env.SHELLY_IP || '192.168.0.1';
 const OpenAI = require('openai');
 
+if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY environment variable is not set. Copy .env.example to .env and fill in your credentials.');
+}
+
 const openai = new OpenAI({
-    apiKey: 'API-KEY',
-    dangerouslyAllowBrowser: true// Replace with your OpenAI API key
+    apiKey: process.env.OPENAI_API_KEY,
 });
 const actionPhrases = [
     {
@@ -157,7 +160,7 @@ async function handleSpecificPhrases(phrases, sessionId) {
                         presence_penalty: 0,
                     }, {
                         headers: {
-                            'Authorization': `Bearer API-KEY`,
+                            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
                             'Content-Type': 'application/json'
                         }
                     });
@@ -196,7 +199,7 @@ async function handleSpecificPhrases(phrases, sessionId) {
                         presence_penalty: 0,
                     }, {
                         headers: {
-                            'Authorization': `Bearer API-KEY`,
+                            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
                             'Content-Type': 'application/json'
                         }
                     });
@@ -335,21 +338,13 @@ async function turnOnExe(exePath) {
 }
 
 async function getFolderPath(actionPhrase) {
-    console.log(actionPhrase);
     switch (actionPhrase) {
         case 'PROCESS_ATTACHMENT_1':
-            console.log("Entering processattachment Get Folder Path");
-            const folderPath = 'C:/Users/hj/Desktop/New folder';
-            return folderPath;
-            break;
+            return process.env.ATTACHMENT_FOLDER_PATH || null;
         case 'OPENGAME':
-            console.log("Entering processattachment Get Folder Path");
-            const folderPath2 = 'C:/Program Files (x86)/BlueStacks X/BlueStacks X.exe';
-            return folderPath2;
-            break;
-        // Add more cases for additional action phrases and corresponding folder paths
+            return process.env.BLUESTACKS_EXE_PATH || null;
         default:
-            return null; // Return null if no matching action phrase is found
+            return null;
     }
 }
 
@@ -390,7 +385,7 @@ async function huggingFaceAPI(message, sessionId) {
             presence_penalty: 0,
         }, {
             headers: {
-                'Authorization': `Bearer API-KEY`,
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
                 'Content-Type': 'application/json'
             }
         });

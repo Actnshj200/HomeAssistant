@@ -1,4 +1,5 @@
 "use strict";
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -38,8 +39,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HandleAudio = void 0;
 var ElevenLabsClient = require("elevenlabs").ElevenLabsClient;
-var apiKey = 'b49d5ead2c3870102d7287ba90fa4df9';
-var voiceId = '7oj6OS5ga3IxvikkhBn1';
+var apiKey = process.env.ELEVENLABS_API_KEY;
+if (!apiKey) { throw new Error('ELEVENLABS_API_KEY environment variable is not set.'); }
+var voiceId = process.env.ELEVENLABS_VOICE_ID || '7oj6OS5ga3IxvikkhBn1';
 var Elvenclient = new ElevenLabsClient({
     apiKey: apiKey,
 });

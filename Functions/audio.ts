@@ -1,8 +1,11 @@
 import { Readable } from 'stream';
+import * as path from 'path';
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const { ElevenLabsClient } = require("elevenlabs");
 
-const apiKey = 'b49d5ead2c3870102d7287ba90fa4df9';
-const voiceId = '7oj6OS5ga3IxvikkhBn1';
+const apiKey = process.env.ELEVENLABS_API_KEY;
+if (!apiKey) { throw new Error('ELEVENLABS_API_KEY environment variable is not set.'); }
+const voiceId = process.env.ELEVENLABS_VOICE_ID || '7oj6OS5ga3IxvikkhBn1';
 
 
 const Elvenclient = new ElevenLabsClient({
