@@ -62,7 +62,7 @@
         <button id="chatbot-send">Send</button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>if (typeof require !== 'undefined') { window.axios = require('axios'); }</script>
     <script src="functions/database.js"></script>
     <script src="functions/hugging-face-api.js"></script>
     <script>
@@ -130,7 +130,7 @@
             });
 
             function generateUniqueId() {
-                return Math.random().toString(36).substring(7);
+                return crypto.randomUUID();
             }
 
             function setCookie(name, value, days) {
