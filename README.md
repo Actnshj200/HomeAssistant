@@ -1,34 +1,21 @@
 # LLM Function Calls Prototype
 
-This branch is an experimental desktop AI assistant prototype built around one core idea:
+This is an experimental desktop AI assistant prototype built around one core idea:
 
 > Let a language model understand a natural-language request, decide whether a real-world action is needed, and route that request into an actual JavaScript function.
 
-Instead of only returning chat text, the assistant is designed to listen through the microphone, transcribe speech, reason over the request, choose an action phrase, run a matching local function, and respond back with generated audio.
+Instead of only returning chat text, the assistant listens through the microphone, transcribes speech, reasons over the request, chooses an action phrase, runs a matching local function, and responds back with generated audio.
 
-This is not a polished production app. It is a research/prototype branch for exploring LLM-driven function calling, local automation, audio I/O, file parsing, and smart-device control.
+This is not a polished production app. It is a research/prototype for exploring LLM-driven function calling, local automation, audio I/O, file parsing, and smart-device control.
 
 ---
 
-## What this prototype is trying to do
-
-The goal is to build a personal desktop assistant that can eventually behave like a lightweight local operating layer:
-
-- Listen to the user through a microphone
-- Transcribe spoken input into text
-- Send the message to an LLM
-- Ask the LLM whether a real action is required
-- Detect an action phrase in the model output
-- Route that phrase to a JavaScript function
-- Perform the requested action locally
-- Speak the result back to the user
-
-Example target flow:
+## What this prototype does
 
 ```text
 User speaks
    ↓
-Microphone audio is recorded
+Microphone audio is recorded (SoX)
    ↓
 Whisper transcribes speech to text
    ↓
@@ -40,126 +27,43 @@ JavaScript switch statement calls the matching function
    ↓
 Local app, file, or smart device action runs
    ↓
-Assistant responds with generated voice
+Assistant responds with generated voice (ElevenLabs)
 ```
 
 ---
 
-## Current capabilities explored in this branch
+## Current action phrases
 
-This branch experiments with several function-call-style actions:
-
-### Voice input
-
-The prototype uses SoX/audio recording logic to continuously listen for microphone input, split it into chunks, detect speech, write temporary WAV files, and send those files for transcription.
-
-### Speech transcription
-
-Audio is transcribed using OpenAI Whisper. The resulting text is then passed into the main assistant flow.
-
-### LLM action routing
-
-The assistant sends a system prompt describing action phrases the model can include in its response. Those phrases are then used as a routing layer.
-
-Current action phrase examples include:
-
-```text
-SIGN_IN_TO_TWITTER
-NO_ACTION_REQUIRED
-PROCESS_ATTACHMENT_1
-OPENGAME
-SHELLY_STATUS
-SHELLY_ON
-SHELLY_OFF
-```
-
-### Local file processing
-
-The branch includes logic for reading files from a local folder and parsing PDFs. The intent is for the assistant to read local attachments/documents and then summarize or respond to them.
-
-### Program launching
-
-The `OPENGAME` action explores launching a local executable from a configured path.
-
-### Shelly smart-device control
-
-The `SHELLY_STATUS`, `SHELLY_ON`, and `SHELLY_OFF` actions explore controlling a Shelly smart device over the local network.
-
-### Voice response
-
-The assistant uses ElevenLabs text-to-speech logic to generate spoken responses from model output.
-
-### Electron desktop shell
-
-The branch includes an Electron entry point for turning the assistant into a desktop application window.
+| Phrase | What it does |
+|---|---|
+| `NO_ACTION_REQUIRED` | Chat-only response, no side effect |
+| `SIGN_IN_TO_TWITTER` | Stub for Twitter login flow |
+| `PROCESS_ATTACHMENT_1` | Reads PDFs from `ATTACHMENT_FOLDER_PATH` and summarizes them |
+| `OPENGAME` | Launches the executable at `BLUESTACKS_EXE_PATH` |
+| `SHELLY_STATUS` | Polls the Shelly smart plug at `SHELLY_IP` |
+| `SHELLY_ON` | Turns the Shelly smart plug on |
+| `SHELLY_OFF` | Turns the Shelly smart plug off |
 
 ---
 
-## Main files
+## File overview
 
-```text
-Functions/hugging-face-api.js
 ```
+index.js                      Electron main process entry point
+index.html                    Renderer UI (chat box + script loader)
+preload.js                    Electron preload stub (contextBridge path documented inside)
+.env.example                  Template for all required environment variables
 
-Main experimental assistant logic. Despite the name, this file currently focuses heavily on OpenAI/Whisper, action phrase routing, local automation, smart-device control, and audio response handling.
-
-```text
-Functions/audio.js
-Functions/audio.ts
+Functions/
+  hugging-face-api.js         Core logic: audio loop, Whisper transcription, GPT routing, action dispatch
+  audio.js                    ElevenLabs TTS helper (compiled from audio.ts)
+  audio.ts                    TypeScript source for ElevenLabs TTS helper
+  database.js                 MongoDB conversation history (optional, currently disabled)
 ```
-
-Text-to-speech helper logic for generating spoken responses.
-
-```text
-Functions/database.js
-```
-
-Early conversation-history/database experiment.
-
-```text
-index.js
-```
-
-Electron shell entry point.
-
-```text
-index.html
-```
-
-Frontend entry point for the Electron window.
 
 ---
 
-## Architecture concept
-
-The current version uses a simple phrase-based protocol:
-
-1. The system prompt explains available actions to the model.
-2. The model replies with normal text plus one or more action phrases.
-3. JavaScript checks the phrase.
-4. A `switch` statement runs the matching function.
-
-This is an early version of tool/function calling.
-
-A more reliable future version should replace phrase detection with strict structured output, such as JSON:
-
-```json
-{
-  "action": "SHELLY_ON",
-  "arguments": {
-    "device": "desk_light"
-  },
-  "spokenResponse": "Turning the desk light on."
-}
-```
-
-That would make the assistant less fragile than searching for raw phrases inside a natural-language response.
-
----
-
-## Setup notes
-
-This branch is experimental and will require local configuration before it can run correctly.
+## Setup
 
 ### 1. Install dependencies
 
@@ -169,115 +73,91 @@ npm install
 
 ### 2. Install SoX
 
-The microphone recording flow expects SoX to be available from the command line.
+The microphone recording loop requires SoX on the system PATH.
 
-On Windows, install SoX and make sure `sox` is available in your PATH.
+- **Windows**: download from [sourceforge.net/projects/sox](https://sourceforge.net/projects/sox/) and add to PATH
+- **macOS**: `brew install sox`
+- **Linux**: `sudo apt install sox`
 
-### 3. Create a `.env` file
+### 3. Configure environment variables
 
-API keys should not be hardcoded. A cleaned-up version of this branch should use environment variables:
+Copy `.env.example` to `.env` and fill in your values. The app will throw a clear error on startup if any required variable is missing.
 
-```env
-OPENAI_API_KEY=your_openai_key_here
-ELEVENLABS_API_KEY=your_elevenlabs_key_here
-ELEVENLABS_VOICE_ID=your_voice_id_here
-SHELLY_IP=192.168.0.xxx
+```bash
+cp .env.example .env
 ```
 
-### 4. Configure local paths
+Required variables:
 
-Several paths are currently hardcoded for local testing, such as attachment folders or executable paths. These should eventually move into a config file.
+| Variable | Description |
+|---|---|
+| `OPENAI_API_KEY` | OpenAI API key (Whisper + GPT-4) |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key (TTS) |
+| `ELEVENLABS_VOICE_ID` | ElevenLabs voice ID (defaults to the value in `.env.example`) |
+| `MONGODB_URI` | MongoDB Atlas connection string (only needed if conversation history is re-enabled) |
+| `SHELLY_IP` | Local IP of your Shelly smart plug (defaults to `192.168.0.1`) |
+| `ATTACHMENT_FOLDER_PATH` | Folder to read PDFs from for `PROCESS_ATTACHMENT_1` |
+| `BLUESTACKS_EXE_PATH` | Full path to the executable for `OPENGAME` |
 
-Example future config shape:
+**Never commit `.env`.** It is listed in `.gitignore`.
+
+### 4. Run
+
+```bash
+npm start
+```
+
+---
+
+## Known issues / remaining cleanup
+
+These are the open items before this prototype could be considered production-quality:
+
+- **Phrase matching is fragile.** The LLM is asked to embed action words inside natural-language text. This should be replaced with structured JSON output (see Architecture section below).
+- **Electron security.** `nodeIntegration: true` is currently required because renderer scripts use `require()` directly. The path to fixing this is documented in `preload.js` — expose only what's needed via `contextBridge`, then disable `nodeIntegration`.
+- **Audio context in Node.** `window.AudioContext` in `hugging-face-api.js` only works inside the Electron renderer, not the Node main process. Audio playback logic should be split clearly into renderer-only code.
+- **No MongoDB connection pooling.** `connectToDatabase()` opens a new connection on every call. Use a cached singleton connection.
+- **No executable allowlist.** `turnOnExe()` launches whatever path `BLUESTACKS_EXE_PATH` points to without validation. Add an allowlist of approved executables.
+- **Rotate any previously exposed keys.** If this repo's git history was ever pushed publicly with secrets in it, those keys should be rotated regardless of the current state of the code.
+
+---
+
+## Architecture — suggested next direction
+
+Replace the phrase-based protocol with strict structured output from the LLM:
 
 ```json
 {
-  "attachmentFolder": "C:/Users/YourName/Desktop/New folder",
-  "apps": {
-    "bluestacks": "C:/Program Files (x86)/BlueStacks X/BlueStacks X.exe"
-  },
-  "devices": {
-    "shelly": "192.168.0.xxx"
-  }
+  "action": "SHELLY_ON",
+  "arguments": { "device": "desk_light" },
+  "spokenResponse": "Turning the desk light on."
 }
 ```
 
----
+Split the codebase into clear layers:
 
-## Known prototype issues
-
-This branch is not merge-ready as-is. It is mainly a proof-of-concept branch.
-
-Important cleanup items:
-
-- Remove committed `node_modules/`
-- Add `node_modules/` to `.gitignore`
-- Remove hardcoded API keys
-- Rotate any exposed keys immediately
-- Move secrets into `.env`
-- Move local device paths/IPs into config
-- Replace phrase matching with structured JSON/function calls
-- Separate audio input, model routing, actions, and speech output into modules
-- Add validation before executing any local/system action
-- Add logging around action decisions
-- Add a safe allowlist for executable launches
-- Fix browser-vs-Node/Electron context issues around audio playback
-
----
-
-## Suggested next rebuild direction
-
-The strongest version of this project would be split into clear layers:
-
-```text
+```
 src/
   audio/
-    recorder.js
-    transcriber.js
-    speaker.js
+    recorder.js       continuous mic capture + VAD
+    transcriber.js    Whisper API
+    speaker.js        ElevenLabs TTS
 
   llm/
-    router.js
-    schemas.js
-    promptBuilder.js
+    router.js         send message, parse structured JSON response
+    promptBuilder.js  build system prompt from action schema
 
   actions/
     shelly.js
     files.js
     apps.js
-    browser.js
 
   memory/
-    database.js
+    database.js       singleton MongoDB connection
 
   config/
-    devices.json
-    apps.json
+    devices.json      Shelly IPs and names
+    apps.json         allowed executable paths
 
   main.js
 ```
-
-Recommended execution model:
-
-```text
-Transcription
-   → Intent router
-   → Strict JSON action object
-   → Validate action
-   → Execute action
-   → Generate final spoken response
-```
-
-The most important upgrade is to make the LLM output deterministic and constrained. The assistant should not be trusted to freely write action phrases inside normal text. It should return a validated object, and the app should reject anything outside the allowed schema.
-
----
-
-## Why this branch matters
-
-This branch is an early attempt at something bigger than a chatbot:
-
-A local assistant that can hear, understand, decide, act, and respond.
-
-The implementation is rough, but the core direction is valuable. It explores the foundation for a natural-language control layer over desktop apps, files, voice, and smart-home devices.
-
-In other words, this branch is the first sketch of a personal AI agent that can actually do things.
