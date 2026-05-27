@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Hj's Wondrous Site</title>
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        #chatbot {
+            width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #chatbot-messages {
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+        }
+
+        .user-message {
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .chatbot-message {
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        #chatbot-input {
+            width: 80%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #chatbot-send {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="chatbot">
+        <div id="chatbot-messages"></div>
+        <input type="text" id="chatbot-input" placeholder="Type your message...">
+        <button id="chatbot-send">Send</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="functions/database.js"></script>
+    <script src="functions/hugging-face-api.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatbotMessages = document.getElementById('chatbot-messages');
+            const chatbotInput = document.getElementById('chatbot-input');
+            const chatbotSend = document.getElementById('chatbot-send');
+
+            let sessionId = getCookie('sessionId');
+            if (!sessionId) {
+                sessionId = generateUniqueId();
+                setCookie('sessionId', sessionId, 1);
+            }
+
+            chatbotSend.addEventListener('click', async () => {
+                const userMessage = chatbotInput.value;
+                chatbotInput.value = '';
+
+                const userMessageElement = document.createElement('div');
+                userMessageElement.classList.add('user-message');
+                userMessageElement.textContent = 'You: ' + userMessage;
+                chatbotMessages.appendChild(userMessageElement);
+
+                try {
+                    const data = await huggingFaceAPI(userMessage, sessionId);
+
+                    // Extract the specific phrases from the bot's response
+                    const phrases = data.botResponse.match(/\b(SIGN_IN_TO_TWITTER|NO_ACTION_REQUIRED|PROCESS_ATTACHMENT_1|OPENGAME|SHELLY_STATUS|SHELLY_ON|SHELLY_OFF)\b/g);
+
+                    // Remove the specific phrases from the bot's response
+                    const cleanedResponse = data.botResponse.replace(/\b(SIGN_IN_TO_TWITTER|NO_ACTION_REQUIRED|PROCESS_ATTACHMENT_1|OPENGAME|SHELLY_STATUS|SHELLY_ON|SHELLY_OFF)\b/g, '').trim();
+
+                    const chatbotMessageElement = document.createElement('div');
+                    chatbotMessageElement.classList.add('chatbot-message');
+                    chatbotMessageElement.textContent = 'Chatbot: ' + cleanedResponse;
+                    chatbotMessages.appendChild(chatbotMessageElement);
+
+                    chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+                    if (phrases) {
+
+                        if (phrases == "PROCESS_ATTACHMENT_1" || phrases == "OPENGAME") {
+                            const secondResponse = await handleSpecificPhrases(phrases, sessionId);
+                            const secondMessageElement = document.createElement('div');
+                            secondMessageElement.classList.add('chatbot-message');
+                            secondMessageElement.textContent = 'Chatbot: ' + secondResponse;
+                            console.log(secondResponse);
+                            chatbotMessages.appendChild(secondMessageElement);
+                            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+                        }
+
+                        else {
+                            await handleSpecificPhrases(phrases, sessionId);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+
+            chatbotInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    chatbotSend.click();
+                }
+            });
+
+            function generateUniqueId() {
+                return Math.random().toString(36).substring(7);
+            }
+
+            function setCookie(name, value, days) {
+                const expires = new Date();
+                expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+                document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/';
+            }
+
+            function getCookie(name) {
+                const cookieName = name + '=';
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    let cookie = cookies[i];
+                    while (cookie.charAt(0) === ' ') {
+                        cookie = cookie.substring(1);
+                    }
+                    if (cookie.indexOf(cookieName) === 0) {
+                        return cookie.substring(cookieName.length, cookie.length);
+                    }
+                }
+                return '';
+            }
+        });
+    </script>
+</body>
+</html>
